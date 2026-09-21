@@ -1,4 +1,3 @@
-import { mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
@@ -8,9 +7,6 @@ const localStorageRoot = process.env.LOCAL_STORAGE_ROOT
 
 export const uploadsDir = path.join(localStorageRoot, "uploads");
 export const resultsDir = path.join(localStorageRoot, "results");
-for (const directory of [uploadsDir, resultsDir]) {
-  mkdirSync(directory, { recursive: true });
-}
 
 export function assetPath(url) {
   if (!url) return null;
