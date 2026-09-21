@@ -1,12 +1,10 @@
 import { useState, useEffect } from "react";
 import { Toaster } from "./components/ui/sonner";
 import axios from "axios";
-import { backendLink } from "../../config";
+import { backendLink } from "./lib/config";
 import { MainInterface } from "./pages/MainInterface";
 import { LandingPage } from "./pages/LandingPage";
 import { AuthPage } from "./pages/AuthPage";
-
-axios.defaults.headers.common["ngrok-skip-browser-warning"] = "true";
 
 /**
  * App

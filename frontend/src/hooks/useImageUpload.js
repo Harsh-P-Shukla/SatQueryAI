@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { toast } from "react-toastify";
 import axios from "axios";
-import { backendLink } from "../../../config";
+import { backendLink } from "../lib/config";
 
 /**
  * useImageUpload

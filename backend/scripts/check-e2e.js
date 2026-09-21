@@ -75,6 +75,7 @@ try {
   if (userId) await pool.query("DELETE FROM users WHERE id=$1", [userId]);
   await pool.end();
   for (const url of [imageUrl, results.grounding?.generated_image].filter(Boolean)) {
-    await unlink(assetPath(url)).catch(error => { if (error.code !== "ENOENT") throw error; });
+    const parsed = assetPath(url);
+    if (parsed) await unlink(parsed.path).catch(error => { if (error.code !== "ENOENT") throw error; });
   }
 }

@@ -10,7 +10,7 @@ export default defineConfig({
     strictPort: true,
     proxy: {
       "/api": {
-        target: "http://localhost:5000", // your backend
+        target: process.env.VITE_BACKEND_URL || "http://localhost:5000",
         changeOrigin: true,
       },
     },

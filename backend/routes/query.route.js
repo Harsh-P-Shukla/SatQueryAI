@@ -6,6 +6,7 @@ import {
   modelLink,
 } from "../../config.js";
 import axios from "axios";
+import { publicAssetUrl } from "../storage.js";
 
 const router = express.Router();
 
@@ -133,6 +134,12 @@ router.post("/grounding", async (req, res) => {
   // Call the model server and persist the produced artifact reference on success
   try {
     const response = await axios.post(`${modelLink}/grounding`, payload);
+    const generatedImage =
+      response.data.generated_image ||
+      response.data.generatedImage ||
+      response.data.output_url ||
+      response.data.result_url ||
+      publicAssetUrl("results", outputPath);
 
     const result = await pool.query(
       "INSERT INTO messages (chat_id, query, text_answer, generated_image) VALUES ($1, $2, $3, $4) RETURNING *",
@@ -140,7 +147,7 @@ router.post("/grounding", async (req, res) => {
         chatId,
         query,
         "",
-        `${backendLink}/api/results/${outputPath}`,
+        generatedImage,
       ]
     );
 

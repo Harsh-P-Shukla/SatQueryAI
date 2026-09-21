@@ -9,13 +9,23 @@ const { Pool } = pkg;
  * - The pool handles connection reuse and simple concurrency for queries made
  *   throughout the backend (import this `pool` and call pool.query(...)).
  */
+const poolConfig = process.env.DATABASE_URL
+  ? {
+      connectionString: process.env.DATABASE_URL,
+      ssl: process.env.PGSSLMODE === "disable" ? false : { rejectUnauthorized: false },
+    }
+  : {
+      user: process.env.PGUSER,
+      host: process.env.PGHOST || "localhost",
+      database: process.env.PGDATABASE || "isro_gi",
+      password: process.env.PGPASSWORD,
+      port: Number(process.env.PGPORT || 5432),
+      ssl: process.env.PGSSLMODE === "require" ? { rejectUnauthorized: false } : false,
+    };
+
 const pool = new Pool({
-  user: process.env.PGUSER,
-  host: process.env.PGHOST || "localhost",
-  database: process.env.PGDATABASE || "isro_gi",
-  password: process.env.PGPASSWORD,
-  port: Number(process.env.PGPORT || 5432),
-  connectionTimeoutMillis: 5000,
+  ...poolConfig,
+  connectionTimeoutMillis: Number(process.env.PG_CONNECTION_TIMEOUT_MS || 5000),
 });
 
 pool.on("error", (error) => {

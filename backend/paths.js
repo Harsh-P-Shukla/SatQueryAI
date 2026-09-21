@@ -2,8 +2,12 @@ import { mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
-export const uploadsDir = fileURLToPath(new URL("./uploads/", import.meta.url));
-export const resultsDir = fileURLToPath(new URL("./results/", import.meta.url));
+const localStorageRoot = process.env.LOCAL_STORAGE_ROOT
+  ? path.resolve(process.env.LOCAL_STORAGE_ROOT)
+  : fileURLToPath(new URL(".", import.meta.url));
+
+export const uploadsDir = path.join(localStorageRoot, "uploads");
+export const resultsDir = path.join(localStorageRoot, "results");
 for (const directory of [uploadsDir, resultsDir]) {
   mkdirSync(directory, { recursive: true });
 }
@@ -15,5 +19,10 @@ export function assetPath(url) {
   if (!match) return null;
   const filename = decodeURIComponent(match[2]);
   if (filename !== path.basename(filename) || /[\\/]/.test(filename) || filename === "." || filename === "..") return null;
-  return path.join(match[1] === "uploads" ? uploadsDir : resultsDir, filename);
+  const kind = match[1];
+  return {
+    kind,
+    filename,
+    path: path.join(kind === "uploads" ? uploadsDir : resultsDir, filename),
+  };
 }

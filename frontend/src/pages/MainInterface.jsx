@@ -11,7 +11,7 @@ import { ImageUploadArea } from "../components/ImageUploadArea";
 import { UploadedImageDisplay } from "../components/UploadedImageDisplay";
 import { QueryResultsList } from "../components/QueryResultList";
 import { QuerySidebar } from "../components/QuerySidebar";
-import { backendLink } from "../../../config.js";
+import { backendLink } from "../lib/config.js";
 
 /**
  * MainInterface
@@ -31,7 +31,7 @@ export function MainInterface({ onLogout, theme, onToggleTheme, username }) {
   const [modelMode, setModelMode] = useState(null);
   useEffect(() => {
     const controller = new AbortController();
-    fetch(`${backendLink}/api/model-info`, { signal: controller.signal, headers: { "ngrok-skip-browser-warning": "true" } })
+    fetch(`${backendLink}/api/model-info`, { signal: controller.signal })
       .then(response => response.ok ? response.json() : null)
       .then(info => setModelMode(info?.mode ?? null))
       .catch(() => {});

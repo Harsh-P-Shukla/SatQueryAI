@@ -1,11 +1,10 @@
 import express from "express";
 import pool from "../db.js";
-import fs from "fs";
 import path from "path";
 import PDFDocument from "pdfkit";
-import { backendLink, modelLink } from "../../config.js";
+import { modelLink } from "../../config.js";
 import axios from 'axios';
-import { assetPath, resultsDir } from "../paths.js";
+import { deleteAssetUrl, readAssetBuffer } from "../storage.js";
 
 const router = express.Router();
 
@@ -25,20 +24,9 @@ const router = express.Router();
 
 /**
  * safeDelete
- * - Synchronously delete a file if it exists.
- * - Wraps fs.unlinkSync in try/catch to avoid crashing the server on deletion errors.
+ * - Deletes a stored asset URL through the configured storage backend.
  */
-export const safeDelete = (filePath) => {
-  if (fs.existsSync(filePath)) {
-    try {
-      fs.unlinkSync(filePath);
-    } catch (err) {
-      console.error("Failed to delete:", err);
-    }
-  } else {
-    console.log("File not found");
-  }
-};
+export const safeDelete = (url) => deleteAssetUrl(url);
 
 /* ------------------------------------------------------------------------------- */
 /* POST /api/chat/new                                                              */
@@ -113,8 +101,8 @@ router.delete("/:chatId", async (req, res) => {
     if (chatRes.rowCount === 0)
       return res.status(404).json({ error: "Chat not found" });
 
-    // Build local filesystem paths for the chat image and any generated message images
-    const imagePath = [assetPath(chatRes.rows[0].image_url)];
+    // Collect asset URLs for the chat image and any generated message images
+    const assetUrls = [chatRes.rows[0].image_url];
 
     const messageRes = await pool.query(
       "SELECT generated_image FROM messages WHERE chat_id = $1",
@@ -122,10 +110,10 @@ router.delete("/:chatId", async (req, res) => {
     );
 
     // Collect generated image paths (if non-empty strings)
-    for (const message of messageRes.rows) imagePath.push(assetPath(message.generated_image));
+    for (const message of messageRes.rows) assetUrls.push(message.generated_image);
 
-    // Delete files on disk (uploads and results) if present
-    for (const filePath of imagePath.filter(Boolean)) safeDelete(filePath);
+    // Delete stored assets if present
+    for (const assetUrl of assetUrls.filter(Boolean)) await safeDelete(assetUrl);
 
     // Remove DB records (messages then the chat)
     await pool.query("DELETE FROM messages WHERE chat_id = $1", [chatId]);
@@ -165,17 +153,17 @@ router.get("/:chatId/report", async (req, res) => {
   );
   const messages = messagesResult.rows;
 
-  // Initialize a PDF document and a write stream into the results folder
+  // Initialize a PDF document. The response is streamed directly so reports do
+  // not depend on persistent filesystem writes in serverless production.
   const doc = new PDFDocument({
     margin: 40,
     autoFirstPage: true,
   });
 
   const fileName = `report_${chatId}_${Date.now()}.pdf`;
-  const filePath = path.join(resultsDir, fileName);
-
-  const writeStream = fs.createWriteStream(filePath);
-  doc.pipe(writeStream);
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+  doc.pipe(res);
 
   /**
    * ensureSpace
@@ -192,22 +180,21 @@ router.get("/:chatId/report", async (req, res) => {
    * - Resolves remote-looking URLs back to local uploads/results folders.
    * - Catches errors to keep PDF generation resilient.
    */
-  const safeAddImage = (imgPath, width = 350) => {
+  const safeAddImage = async (imgPath, width = 350) => {
     try {
       if (!imgPath) return;
 
-      const localPath = assetPath(imgPath);
-
-      if (!localPath || !fs.existsSync(localPath)) {
-        console.error("❌ IMAGE NOT FOUND:", localPath);
+      const imageBuffer = await readAssetBuffer(imgPath);
+      if (!imageBuffer) {
+        console.error("Image not found:", imgPath);
         return;
       }
 
       ensureSpace(250);
-      doc.image(localPath, { fit: [width, 250], align: "left" });
+      doc.image(imageBuffer, { fit: [width, 250], align: "left" });
       doc.moveDown(1);
     } catch (err) {
-      console.error("❌ safeAddImage error:", err);
+      console.error("safeAddImage error:", err);
     }
   };
 
@@ -227,14 +214,14 @@ router.get("/:chatId/report", async (req, res) => {
   doc.fontSize(18).text("Uploaded Image:", { underline: true });
   doc.moveDown(1);
 
-  safeAddImage(chat.image_url);
+  await safeAddImage(chat.image_url);
   doc.moveDown(1.5);
 
   doc.fontSize(20).text("Analysis Timeline:", { underline: true });
   doc.moveDown();
 
   // Iterate messages and include query, model output and any generated image
-  messages.forEach((msg, index) => {
+  for (const [index, msg] of messages.entries()) {
     ensureSpace(80);
     doc.fontSize(16).text(`Query ${index + 1}`);
     doc.moveDown(0.5);
@@ -248,7 +235,7 @@ router.get("/:chatId/report", async (req, res) => {
     if (msg.generated_image) {
       doc.fontSize(12).text("Generated Image:");
       doc.moveDown(0.5);
-      safeAddImage(msg.generated_image);
+      await safeAddImage(msg.generated_image);
     }
 
     doc.moveDown(1);
@@ -258,7 +245,7 @@ router.get("/:chatId/report", async (req, res) => {
       .lineTo(doc.page.width - doc.page.margins.right, doc.y)
       .stroke();
     doc.moveDown(1.5);
-  });
+  }
 
   ensureSpace(100);
   doc.moveDown(2);
@@ -269,9 +256,6 @@ router.get("/:chatId/report", async (req, res) => {
     });
 
   doc.end();
-
-  // When the file is written, send it to the client for download
-  writeStream.on("finish", () => res.download(filePath, fileName));
 });
 
 export default router;

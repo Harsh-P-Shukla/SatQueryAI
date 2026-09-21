@@ -1,6 +1,6 @@
 import axios from "axios";
 import { useState } from "react";
-import { backendLink } from "../../../config";
+import { backendLink } from "../lib/config";
 import { toast } from "react-toastify";
 
 /**

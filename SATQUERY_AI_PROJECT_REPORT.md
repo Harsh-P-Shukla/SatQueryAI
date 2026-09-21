@@ -1,10 +1,10 @@
 # SatQuery AI Project Report
 
-Updated: 2026-09-16
+Updated: 2026-09-21
 
 ## 1. Project overview
 
-SatQuery AI is a multimodal satellite-image analysis web application. It lets a user register, log in, upload a satellite image, generate a caption, ask visual questions, request object counts, perform visual grounding, review chat history, and download a PDF analysis report. The application is designed around a web frontend, a Node/Express API server, PostgreSQL persistence, and a Python FastAPI inference service.
+SatQuery AI is a multimodal satellite-image analysis web application. It lets a user register, log in, upload a satellite image, generate a caption, ask visual questions, request object counts, perform visual grounding, review chat history, and download a PDF analysis report. The application is designed around a web frontend, a Node/Express API server, PostgreSQL persistence, and a Python FastAPI inference service. The current codebase has also been pushed to the GitHub repository `https://github.com/Harsh-P-Shukla/SatQueryAI.git`, and the backend is configured for public access through an ngrok tunnel during demo/deployment runs.
 
 The current runnable local version uses a public baseline model profile:
 
@@ -12,6 +12,7 @@ The current runnable local version uses a public baseline model profile:
 - YOLO11x-OBB for oriented-object detection and grounding.
 - PostgreSQL for users, chats, messages, metadata, and inference output records.
 - Local filesystem storage for uploaded images and generated results.
+- ngrok exposure for the Node backend so the local API can be reached from the frontend/demo environment.
 
 The original custom fine-tuned artifacts referenced by the repository were not fully available from Git LFS, so the public model profile was selected and verified for local execution.
 
@@ -56,6 +57,15 @@ The goal is to provide a practical prototype for remote-sensing visual question 
 - Backend can generate a PDF report for a chat.
 - Report includes image metadata, caption, stored questions, answers, and generated artifacts where available.
 
+### Deployment and repository status
+
+- Whole codebase is connected to the GitHub remote repository: `https://github.com/Harsh-P-Shukla/SatQueryAI.git`.
+- Current local branch: `main`.
+- Latest local commit checked while updating this report: `8e0ab12 Initial project commit`.
+- Git working tree was clean before this report edit.
+- Backend public URL is configured through ngrok in root `config.js`.
+- Frontend remains a Vite development app on localhost and calls the configured backend URL.
+
 ### Local development UI
 
 - React/Vite frontend.
@@ -68,6 +78,8 @@ The goal is to provide a practical prototype for remote-sensing visual question 
 ```mermaid
 flowchart TD
     A[React frontend<br/>http://localhost:5173] -->|HTTP API| B[Node/Express backend<br/>http://localhost:5000]
+    A -->|demo/public API calls| N[ngrok backend tunnel]
+    N --> B
     B -->|SQL| C[(PostgreSQL<br/>isro_gi)]
     B -->|HTTP| D[Python FastAPI inference<br/>http://127.0.0.1:8000]
     B -->|static files| E[uploads and results folders]
@@ -75,7 +87,7 @@ flowchart TD
     D --> G[YOLO11x-OBB detector]
 ```
 
-The frontend communicates only with the Node backend. The backend owns database access, file uploads, static result serving, chat persistence, PDF report generation, and orchestration of the Python inference service. The Python service owns model loading and GPU/CPU inference.
+The frontend communicates only with the Node backend. For local-only runs, that backend can be reached at `http://localhost:5000`. For demo/deployment runs, the same backend is exposed through ngrok and referenced from `config.js`. The backend owns database access, file uploads, static result serving, chat persistence, PDF report generation, and orchestration of the Python inference service. The Python service owns model loading and GPU/CPU inference.
 
 ## 5. Technology stack
 
@@ -219,15 +231,23 @@ Base URL: `http://127.0.0.1:8000`
 | POST | `/numeric_chat` | Numeric chat answer |
 | POST | `/semantic` | Open-ended semantic VQA |
 
-## 8. Configuration
+## 8. Configuration and deployment
 
-Root `config.js` now uses localhost URLs for local development:
+Root `config.js` currently keeps the frontend and model service local while exposing the backend through ngrok:
 
 ```js
 export const translateLink = "http://localhost:5001";
 export const frontendLink = "http://localhost:5173";
-export const backendLink = "http://localhost:5000";
 export const modelLink = "http://localhost:8000";
+export const backendLink = "https://dba7-2401-4900-ae4a-19d3-6501-ba85-7865-4aa5.ngrok-free.app";
+```
+
+The ngrok URL is used as the public backend base URL for uploaded-image links, generated-result links, and frontend API requests. Because ngrok URLs can rotate unless a reserved domain is used, this value should be refreshed in `config.js` whenever a new tunnel is started.
+
+For purely local development without ngrok, set:
+
+```js
+export const backendLink = "http://localhost:5000";
 ```
 
 Backend environment variables are stored in `backend/.env`, which must not be committed. The example file documents the required keys:
@@ -318,6 +338,20 @@ Expected URL:
 http://localhost:5000/api/health
 ```
 
+### Terminal 3b: ngrok backend tunnel for demo/deployment
+
+After the backend is running on port 5000, expose it through ngrok:
+
+```powershell
+ngrok http 5000
+```
+
+Copy the generated HTTPS forwarding URL into `backendLink` in root `config.js`, then restart the frontend if it is already running. The current checked configuration uses:
+
+```text
+https://dba7-2401-4900-ae4a-19d3-6501-ba85-7865-4aa5.ngrok-free.app
+```
+
 ### Terminal 4: React frontend
 
 ```powershell
@@ -354,6 +388,8 @@ The setup was verified with:
 - PDF report generation.
 - Frontend production build.
 - Browser loading at `http://localhost:5173`.
+- Git remote configuration for `origin` pointing to `https://github.com/Harsh-P-Shukla/SatQueryAI.git`.
+- ngrok backend base URL present in root `config.js`.
 
 The full backend smoke test passes through:
 
@@ -394,8 +430,24 @@ The project configuration reserves `http://localhost:5001` for a translation ser
 - Model caches and virtual environments are ignored by Git.
 - Uploads and generated results are ignored by Git.
 - No fake credentials or placeholder secrets are hardcoded into the application.
+- The ngrok URL is a public routing endpoint, not a secret. If it changes, update `config.js`; if a stable deployment is required, use a reserved ngrok domain or a production host.
 
-## 17. Suggested future improvements
+## 17. Source control status
+
+The codebase is configured with the following Git remote:
+
+```text
+origin  https://github.com/Harsh-P-Shukla/SatQueryAI.git
+```
+
+Current repository status at the time of this report update:
+
+- Branch: `main`.
+- Latest local commit before the report update: `8e0ab12 Initial project commit`.
+- Remote fetch/push URL: `https://github.com/Harsh-P-Shukla/SatQueryAI.git`.
+- The source tree is prepared for collaboration through GitHub while local-only assets such as `.env`, caches, uploaded files, generated reports, and virtual environments remain excluded from version control.
+
+## 18. Suggested future improvements
 
 1. Add a complete translation microservice or remove the translation route from UI flows if not needed.
 2. Add authenticated session tokens instead of relying only on returned user records.
@@ -406,8 +458,9 @@ The project configuration reserves `http://localhost:5001` for a translation ser
 7. Add test fixtures for multiple satellite scenes.
 8. Add support for temporal change detection when matching datasets and weights are available.
 9. Add a structured evaluation dashboard for benchmark images and QA pairs.
-10. Package the local setup with a single launcher script after all services are finalized.
+10. Add a stable public deployment configuration instead of relying on a rotating ngrok forwarding URL.
+11. Package the local setup with a single launcher script after all services are finalized.
 
-## 18. Conclusion
+## 19. Conclusion
 
-SatQuery AI is now configured as a runnable local multimodal satellite-analysis application on Windows. The verified setup uses PostgreSQL, Node/Express, React/Vite, FastAPI, Qwen2.5-VL, and YOLO11x-OBB. Core workflows are operational: user authentication, upload, chat creation, captioning, VQA, grounding, chat history, persistence, and report generation.
+SatQuery AI is now configured as a runnable multimodal satellite-analysis application on Windows, with the complete codebase connected to the GitHub repository at `https://github.com/Harsh-P-Shukla/SatQueryAI.git`. The verified setup uses PostgreSQL, Node/Express, React/Vite, FastAPI, Qwen2.5-VL, and YOLO11x-OBB. Core workflows are operational: user authentication, upload, chat creation, captioning, VQA, grounding, chat history, persistence, and report generation. The latest configuration also supports ngrok-based backend exposure for demo/deployment access while retaining the local inference and database services.

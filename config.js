@@ -1,4 +1,6 @@
-export const translateLink = "http://localhost:5001";
-export const frontendLink = "http://localhost:5173";
-export const modelLink = "http://localhost:8000";
-export const backendLink = "https://dba7-2401-4900-ae4a-19d3-6501-ba85-7865-4aa5.ngrok-free.app";
+const trimTrailingSlash = (value) => value?.replace(/\/+$/, "");
+
+export const translateLink = trimTrailingSlash(process.env.TRANSLATE_URL) || "http://localhost:5001";
+export const frontendLink = trimTrailingSlash(process.env.FRONTEND_URL) || "http://localhost:5173";
+export const backendLink = trimTrailingSlash(process.env.BACKEND_URL) || "http://localhost:5000";
+export const modelLink = trimTrailingSlash(process.env.INFERENCE_SERVICE_URL) || "http://localhost:8000";

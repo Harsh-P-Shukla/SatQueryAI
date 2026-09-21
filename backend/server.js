@@ -1,12 +1,13 @@
 import express from "express";
 import cors from "cors";
+import { pathToFileURL } from "node:url";
 import authRoutes from "./routes/auth.route.js";
 import chatRoutes from "./routes/chat.route.js";
 import queryRoutes from "./routes/query.route.js";
 import uploadRoutes from "./routes/upload.route.js";
 import { frontendLink } from "../config.js";
 import pool from "./db.js";
-import { uploadsDir, resultsDir } from "./paths.js";
+import { serveAsset } from "./storage.js";
 
 /**
  * server.js
@@ -20,8 +21,18 @@ const app = express();
 // Parse incoming JSON payloads
 app.use(express.json());
 
-// Allow requests only from configured frontend origin (simple CORS policy)
-app.use(cors({ origin: `${frontendLink}` }));
+const allowedOrigins = (process.env.CORS_ORIGINS || frontendLink)
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+// Allow requests from the configured Vercel/local frontend origins.
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error(`CORS blocked origin: ${origin}`));
+  },
+}));
 
 app.get("/api/model-info", (req, res) => res.json({
   mode: process.env.SATQUERY_MODEL_MODE || process.env["V" + "EQRA_MODEL_MODE"] || "original",
@@ -45,8 +56,8 @@ app.use("/api/upload", uploadRoutes);   // upload: image upload endpoints
 // Expose filesystem directories for serving uploaded files and result artifacts
 // - /api/uploads -> serves files from backend/uploads
 // - /api/results -> serves generated result files (e.g., image outputs)
-app.use("/api/uploads", express.static(uploadsDir));
-app.use("/api/results", express.static(resultsDir));
+app.get("/api/uploads/:filename", serveAsset("uploads"));
+app.get("/api/results/:filename", serveAsset("results"));
 
 app.use((err, req, res, next) => {
   console.error("Request failed:", err.code || err.message);
@@ -54,5 +65,12 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: "Request failed; check backend logs and service connections." });
 });
 
-// Start listening on port 5000 and log readiness
-app.listen(5000, "localhost", () => console.log("Server running at http://localhost:5000"));
+export default app;
+
+const isDirectRun = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+
+if (process.env.VERCEL !== "1" && isDirectRun) {
+  const port = Number(process.env.PORT || 5000);
+  const host = process.env.HOST || "localhost";
+  app.listen(port, host, () => console.log(`Server running at http://${host}:${port}`));
+}
