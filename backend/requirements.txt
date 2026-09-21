@@ -1,0 +1,19 @@
+accelerate
+bitsandbytes
+fastapi
+peft==0.18.0
+Pillow
+qwen-vl-utils
+scikit-learn
+tensorboard
+torch==2.11.0
+torchvision==0.26.0
+# Preserve the Transformers 4 API used by this source and its PEFT adapters.
+transformers==4.57.6
+ultralytics
+uvicorn
+python-dotenv
+requests
+numpy
+scipy
+opencv-python

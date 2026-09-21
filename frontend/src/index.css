@@ -1,0 +1,264 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
+
+@import 'tailwindcss';
+@layer properties {
+  @supports (((-webkit-hyphens: none)) and (not (margin-trim: inline))) or ((-moz-orient: inline) and (not (color: rgb(from red r g b)))) {
+    *, :before, :after, ::backdrop {
+      --tw-translate-x: 0;
+      --tw-translate-y: 0;
+      --tw-translate-z: 0;
+      --tw-space-y-reverse: 0;
+      --tw-border-style: solid;
+      --tw-gradient-position: initial;
+      --tw-gradient-from: #0000;
+      --tw-gradient-via: #0000;
+      --tw-gradient-to: #0000;
+      --tw-gradient-stops: initial;
+      --tw-gradient-via-stops: initial;
+      --tw-gradient-from-position: 0%;
+      --tw-gradient-via-position: 50%;
+      --tw-gradient-to-position: 100%;
+      --tw-leading: initial;
+      --tw-font-weight: initial;
+      --tw-tracking: initial;
+      --tw-shadow: 0 0 #0000;
+      --tw-shadow-color: initial;
+      --tw-shadow-alpha: 100%;
+      --tw-inset-shadow: 0 0 #0000;
+      --tw-inset-shadow-color: initial;
+      --tw-inset-shadow-alpha: 100%;
+      --tw-ring-color: initial;
+      --tw-ring-shadow: 0 0 #0000;
+      --tw-inset-ring-color: initial;
+      --tw-inset-ring-shadow: 0 0 #0000;
+      --tw-ring-inset: initial;
+      --tw-ring-offset-width: 0px;
+      --tw-ring-offset-color: #fff;
+      --tw-ring-offset-shadow: 0 0 #0000;
+      --tw-outline-style: solid;
+      --tw-blur: initial;
+      --tw-brightness: initial;
+      --tw-contrast: initial;
+      --tw-grayscale: initial;
+      --tw-hue-rotate: initial;
+      --tw-invert: initial;
+      --tw-opacity: initial;
+      --tw-saturate: initial;
+      --tw-sepia: initial;
+      --tw-drop-shadow: initial;
+      --tw-drop-shadow-color: initial;
+      --tw-drop-shadow-alpha: 100%;
+      --tw-drop-shadow-size: initial;
+      --tw-backdrop-blur: initial;
+      --tw-backdrop-brightness: initial;
+      --tw-backdrop-contrast: initial;
+      --tw-backdrop-grayscale: initial;
+      --tw-backdrop-hue-rotate: initial;
+      --tw-backdrop-invert: initial;
+      --tw-backdrop-opacity: initial;
+      --tw-backdrop-saturate: initial;
+      --tw-backdrop-sepia: initial;
+      --tw-duration: initial;
+    }
+  }
+}
+
+@layer theme {
+  :root, :host {
+    --font-sans: "Montserrat", sans-serif;
+    --font-mono: "Montserrat", sans-serif;
+  }
+}
+
+@layer base {
+  body {
+    background: #07111f;
+  }
+}
+
+@layer utilities {
+  @keyframes satqueryAurora {
+    0% {
+      transform: translate3d(-12%, 0, 0) rotate(-8deg) scaleX(1);
+    }
+    50% {
+      transform: translate3d(8%, -4%, 0) rotate(-3deg) scaleX(1.1);
+    }
+    100% {
+      transform: translate3d(-12%, 0, 0) rotate(-8deg) scaleX(1);
+    }
+  }
+
+  @keyframes satqueryPulse {
+    0%, 100% {
+      opacity: 0.38;
+    }
+    50% {
+      opacity: 0.86;
+    }
+  }
+
+  @keyframes satqueryOrbit {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .satquery-space-shell {
+    color-scheme: dark;
+    background:
+      radial-gradient(circle at 14% 10%, rgba(255, 153, 51, 0.14), transparent 20rem),
+      radial-gradient(circle at 86% 14%, rgba(19, 136, 8, 0.14), transparent 22rem),
+      linear-gradient(145deg, #050b18 0%, #071426 42%, #101421 72%, #050b18 100%);
+  }
+
+  .satquery-cosmos {
+    z-index: 0;
+  }
+
+  .satquery-deep-space {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: linear-gradient(to bottom, black, transparent 88%);
+  }
+
+  .satquery-aurora-ribbon {
+    position: absolute;
+    width: 120vw;
+    height: 38vh;
+    left: -10vw;
+    filter: blur(30px);
+    mix-blend-mode: screen;
+    opacity: 0.58;
+    animation: satqueryAurora 14s ease-in-out infinite;
+  }
+
+  .satquery-aurora-ribbon-a {
+    top: 4vh;
+    background: linear-gradient(100deg, transparent 8%, rgba(255, 153, 51, 0.48), rgba(72, 202, 228, 0.42), rgba(19, 136, 8, 0.42), transparent 92%);
+  }
+
+  .satquery-aurora-ribbon-b {
+    top: 34vh;
+    opacity: 0.28;
+    animation-duration: 19s;
+    animation-direction: reverse;
+    background: linear-gradient(96deg, transparent 4%, rgba(72, 202, 228, 0.46), rgba(255, 255, 255, 0.18), rgba(255, 153, 51, 0.32), transparent 94%);
+  }
+
+  .satquery-tricolor-current {
+    position: absolute;
+    inset: auto -8vw 16vh -8vw;
+    height: 8px;
+    background: linear-gradient(90deg, rgba(255, 153, 51, 0), rgba(255, 153, 51, 0.8), rgba(255, 255, 255, 0.65), rgba(19, 136, 8, 0.8), rgba(19, 136, 8, 0));
+    filter: blur(2px);
+    opacity: 0.55;
+    animation: satqueryPulse 5s ease-in-out infinite;
+  }
+
+  .satquery-orbit-system {
+    position: fixed;
+    right: min(4vw, 56px);
+    top: 11vh;
+    width: min(34vw, 430px);
+    aspect-ratio: 1;
+    opacity: 0.5;
+  }
+
+  .satquery-orbit {
+    position: absolute;
+    inset: 10%;
+    border: 1px solid rgba(72, 202, 228, 0.35);
+    border-radius: 50%;
+    transform: rotate(-18deg) skewX(13deg);
+  }
+
+  .satquery-orbit-outer {
+    animation: satqueryOrbit 32s linear infinite;
+  }
+
+  .satquery-orbit-inner {
+    inset: 26%;
+    border-color: rgba(255, 153, 51, 0.36);
+    animation: satqueryOrbit 20s linear infinite reverse;
+  }
+
+  .satquery-satellite {
+    position: absolute;
+    right: 4%;
+    top: 24%;
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    background: rgba(5, 16, 30, 0.55);
+    box-shadow: 0 0 28px rgba(72, 202, 228, 0.28);
+    backdrop-filter: blur(10px);
+  }
+
+  .satquery-starfield {
+    position: absolute;
+    inset: 0;
+  }
+
+  .satquery-star {
+    position: absolute;
+    display: block;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.58);
+    animation: satqueryPulse 3.8s ease-in-out infinite;
+  }
+
+  .satquery-bharat-marker {
+    position: fixed;
+    left: 22px;
+    bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 999px;
+    color: rgba(255, 255, 255, 0.72);
+    background: rgba(5, 16, 30, 0.5);
+    backdrop-filter: blur(14px);
+    font-size: 11px;
+    letter-spacing: 0.02em;
+  }
+
+  .satquery-space-shell header,
+  .satquery-space-shell [data-radix-tabs-content],
+  .satquery-space-shell .rounded-2xl,
+  .satquery-space-shell .rounded-xl {
+    backdrop-filter: blur(18px);
+  }
+
+  .satquery-space-shell .border-white\/10 {
+    border-color: rgba(255, 255, 255, 0.16);
+  }
+
+  .satquery-space-shell .bg-white\/5 {
+    background-color: rgba(255, 255, 255, 0.075);
+  }
+
+  .satquery-space-shell button {
+    letter-spacing: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .satquery-aurora-ribbon,
+    .satquery-orbit,
+    .satquery-star,
+    .satquery-tricolor-current {
+      animation: none;
+    }
+  }
+}
+

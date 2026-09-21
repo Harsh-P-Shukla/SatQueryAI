@@ -1,0 +1,413 @@
+# SatQuery AI Project Report
+
+Updated: 2026-09-16
+
+## 1. Project overview
+
+SatQuery AI is a multimodal satellite-image analysis web application. It lets a user register, log in, upload a satellite image, generate a caption, ask visual questions, request object counts, perform visual grounding, review chat history, and download a PDF analysis report. The application is designed around a web frontend, a Node/Express API server, PostgreSQL persistence, and a Python FastAPI inference service.
+
+The current runnable local version uses a public baseline model profile:
+
+- Qwen/Qwen2.5-VL-3B-Instruct for captioning and visual question answering.
+- YOLO11x-OBB for oriented-object detection and grounding.
+- PostgreSQL for users, chats, messages, metadata, and inference output records.
+- Local filesystem storage for uploaded images and generated results.
+
+The original custom fine-tuned artifacts referenced by the repository were not fully available from Git LFS, so the public model profile was selected and verified for local execution.
+
+## 2. Problem statement
+
+Satellite-image interpretation usually requires specialized tools and domain expertise. SatQuery AI reduces that barrier by allowing users to interact with imagery through natural-language workflows:
+
+- “Describe this satellite image.”
+- “How many aircraft are visible?”
+- “Is there an airport in the image?”
+- “Highlight the planes.”
+- “Show my previous image-analysis conversations.”
+
+The goal is to provide a practical prototype for remote-sensing visual question answering, visual grounding, and explainable image-analysis workflows.
+
+## 3. Key capabilities
+
+### User and session management
+
+- User registration through email and password.
+- Login with bcrypt password verification.
+- PostgreSQL-backed user persistence.
+- Chat sessions connected to uploaded images and user accounts.
+
+### Image upload and retrieval
+
+- Upload route using Multer.
+- Uploaded images stored under the backend uploads directory.
+- Upload URLs served through the backend static route.
+- Generated result images served from the backend results directory.
+
+### Multimodal analysis
+
+- Captioning endpoint for natural-language scene description.
+- Semantic VQA endpoint for open-ended questions.
+- Binary VQA endpoint for yes/no style questions.
+- Numeric VQA endpoint for count-style questions.
+- Visual grounding endpoint that returns generated annotated images.
+
+### Report generation
+
+- Backend can generate a PDF report for a chat.
+- Report includes image metadata, caption, stored questions, answers, and generated artifacts where available.
+
+### Local development UI
+
+- React/Vite frontend.
+- Minimal animated Indian-space visual theme.
+- Aurora background, tricolor current effect, star field, and orbiting satellite motif.
+- Localhost configuration for frontend, backend, and inference services.
+
+## 4. System architecture
+
+```mermaid
+flowchart TD
+    A[React frontend<br/>http://localhost:5173] -->|HTTP API| B[Node/Express backend<br/>http://localhost:5000]
+    B -->|SQL| C[(PostgreSQL<br/>isro_gi)]
+    B -->|HTTP| D[Python FastAPI inference<br/>http://127.0.0.1:8000]
+    B -->|static files| E[uploads and results folders]
+    D --> F[Qwen2.5-VL-3B public baseline]
+    D --> G[YOLO11x-OBB detector]
+```
+
+The frontend communicates only with the Node backend. The backend owns database access, file uploads, static result serving, chat persistence, PDF report generation, and orchestration of the Python inference service. The Python service owns model loading and GPU/CPU inference.
+
+## 5. Technology stack
+
+### Frontend
+
+- React
+- Vite
+- Tailwind CSS
+- Radix UI primitives
+- Framer Motion / motion
+- GSAP
+- Axios
+- Lucide React icons
+
+### Backend
+
+- Node.js
+- Express
+- PostgreSQL client `pg`
+- Multer
+- Axios / node-fetch
+- bcrypt
+- PDFKit
+
+### Python inference
+
+- Python 3.11 isolated virtual environment
+- FastAPI
+- Uvicorn
+- PyTorch with CUDA support on this machine
+- Transformers
+- Accelerate
+- PEFT
+- bitsandbytes
+- Ultralytics
+- qwen-vl-utils
+- Pillow
+- scikit-learn
+
+### Database
+
+- PostgreSQL 18 on Windows
+- Database name: `isro_gi`
+- Tables: `users`, `chats`, `messages`
+
+## 6. Database design
+
+### users
+
+Stores user profile and login data.
+
+```sql
+CREATE TABLE users (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(100),
+  email VARCHAR(100) UNIQUE NOT NULL,
+  password VARCHAR(100) NOT NULL
+);
+```
+
+### chats
+
+Stores one image-analysis session per uploaded image.
+
+```sql
+CREATE TABLE chats (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  image_url TEXT NOT NULL,
+  title TEXT,
+  caption TEXT DEFAULT NULL,
+  img_type TEXT,
+  merged_polys JSONB,
+  merged_cls JSONB,
+  merged_source JSONB,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### messages
+
+Stores question-answer records connected to a chat.
+
+```sql
+CREATE TABLE messages (
+  id SERIAL PRIMARY KEY,
+  chat_id INTEGER REFERENCES chats(id) ON DELETE CASCADE,
+  query TEXT NOT NULL,
+  text_answer TEXT,
+  generated_image TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+Verified behavior:
+
+- Unique user email constraint works.
+- Chat records are linked to users.
+- Messages are linked to chats.
+- Foreign-key cascade behavior works.
+- JSONB columns store detection polygons/classes/source metadata.
+
+## 7. API inventory
+
+### Backend API
+
+Base URL: `http://localhost:5000`
+
+| Method | Route | Purpose |
+| --- | --- | --- |
+| GET | `/api/health` | Backend and database health check |
+| GET | `/api/model-info` | Active inference mode metadata |
+| POST | `/api/auth/signup` | Register a user |
+| POST | `/api/auth/login` | Log in a user |
+| POST | `/api/upload` | Upload an image |
+| GET | `/api/uploads/:filename` | Retrieve uploaded image |
+| GET | `/api/results/:filename` | Retrieve generated result artifact |
+| POST | `/api/chat/new` | Create a chat session for an uploaded image |
+| GET | `/api/chat/user/:userId` | List user chats |
+| GET | `/api/chat/:chatId/messages` | List messages for a chat |
+| DELETE | `/api/chat/:chatId` | Delete a chat |
+| GET | `/api/chat/:chatId/report` | Download PDF analysis report |
+| POST | `/api/query/caption` | Generate image caption |
+| POST | `/api/query/vqa` | Run semantic, binary, or numeric VQA |
+| POST | `/api/query/grounding` | Generate grounded image result |
+| POST | `/api/query/evaluate` | Partial orchestrated benchmark/evaluation flow |
+
+### Python inference API
+
+Base URL: `http://127.0.0.1:8000`
+
+| Method | Route | Purpose |
+| --- | --- | --- |
+| GET | `/health` | Inference service health and model metadata |
+| POST | `/upload` | Run image preprocessing and object detection |
+| POST | `/caption` | Generate caption |
+| POST | `/grounding` | Generate visual grounding output |
+| POST | `/binary` | Binary VQA |
+| POST | `/numeric_evaluate` | Numeric count evaluation |
+| POST | `/numeric_chat` | Numeric chat answer |
+| POST | `/semantic` | Open-ended semantic VQA |
+
+## 8. Configuration
+
+Root `config.js` now uses localhost URLs for local development:
+
+```js
+export const translateLink = "http://localhost:5001";
+export const frontendLink = "http://localhost:5173";
+export const backendLink = "http://localhost:5000";
+export const modelLink = "http://localhost:8000";
+```
+
+Backend environment variables are stored in `backend/.env`, which must not be committed. The example file documents the required keys:
+
+```env
+PGHOST=localhost
+PGPORT=5432
+PGDATABASE=isro_gi
+PGUSER=
+PGPASSWORD=
+
+SATQUERY_MODEL_MODE=public
+SATQUERY_BASE_MODEL=Qwen/Qwen2.5-VL-3B-Instruct
+SATQUERY_MAX_PIXELS=401408
+SATQUERY_YOLO_DEVICE=cpu
+```
+
+For compatibility with earlier local setup, the backend still accepts pre-rename model environment variables, but new setup should use `SATQUERY_*`.
+
+## 9. Model setup
+
+### Public baseline profile
+
+The verified local profile uses:
+
+- `Qwen/Qwen2.5-VL-3B-Instruct`
+- Model revision: `66285546d2b821cf421d4f5eb2576359d3770cd3`
+- YOLO weights: `backend/.cache/models/yolo11x-obb.pt`
+- YOLO SHA256: `1461342db1ce0f35c755278303febd1174604ccc375110076fa0ac155231b6a0`
+
+The Qwen snapshot is stored in the local Hugging Face cache under `backend/.cache/huggingface`. YOLO weights are stored under `backend/.cache/models`.
+
+### Original custom model profile
+
+Original-mode support remains in source, but it is not verified because the required custom artifacts were unavailable from Git LFS:
+
+- Custom YOLO / DIOR weights.
+- Caption adapter weights.
+- VQA adapter weights.
+
+The public baseline does not recreate those fine-tuned adapters. It is suitable for a working demo and local development, but the exact competition/training behavior of the original custom model cannot be claimed without the missing weights.
+
+## 10. Hardware and runtime observations
+
+The machine has an NVIDIA GPU available. The verified setup uses:
+
+- Qwen on GPU with 4-bit NF4 loading through bitsandbytes.
+- YOLO on CPU to preserve GPU memory for Qwen.
+- `SATQUERY_MAX_PIXELS=401408` to reduce visual-token memory pressure.
+
+Expected limitations:
+
+- First inference call is slower because models must warm up.
+- Caption quality depends on the public baseline and may be less specialized than a fine-tuned remote-sensing model.
+- CPU YOLO is slower but leaves GPU memory for the VLM.
+
+## 11. Setup and run sequence
+
+Open separate terminals from the project root.
+
+### Terminal 1: PostgreSQL
+
+Make sure the PostgreSQL Windows service is running. The verified service name was `postgresql-x64-18`.
+
+### Terminal 2: Python inference service
+
+```powershell
+cd <project-root>
+.\backend\start-inference.ps1
+```
+
+Expected URL:
+
+```text
+http://127.0.0.1:8000/health
+```
+
+### Terminal 3: Node backend
+
+```powershell
+cd <project-root>
+npm run start --prefix backend
+```
+
+Expected URL:
+
+```text
+http://localhost:5000/api/health
+```
+
+### Terminal 4: React frontend
+
+```powershell
+cd <project-root>
+npm run dev --prefix frontend
+```
+
+Expected URL:
+
+```text
+http://localhost:5173
+```
+
+## 12. Verification performed
+
+The setup was verified with:
+
+- PostgreSQL service availability.
+- Database creation and schema creation.
+- Database connection check.
+- Insert/select tests.
+- Foreign-key and cascade behavior checks.
+- Backend health check.
+- Auth signup and login.
+- Image upload.
+- Chat creation.
+- Captioning.
+- Semantic VQA.
+- Binary VQA.
+- Numeric VQA.
+- Visual grounding.
+- Generated image retrieval.
+- Message persistence.
+- PDF report generation.
+- Frontend production build.
+- Browser loading at `http://localhost:5173`.
+
+The full backend smoke test passes through:
+
+```powershell
+npm run test:e2e --prefix backend
+```
+
+## 13. UI design update
+
+The frontend has been updated with a minimal Indian-space visual style:
+
+- Dark orbital background.
+- Animated aurora effect.
+- Tricolor energy current.
+- Star field.
+- Orbit rings.
+- Satellite motif.
+- Updated brand name: SatQuery AI.
+
+The interface remains a local React/Vite app and preserves the existing user flows.
+
+## 14. Translation service status
+
+The project configuration reserves `http://localhost:5001` for a translation service, but the inspected repository does not contain a complete local translation service implementation. The core application functions without it for the verified image-analysis workflows. If translation is required later, a real service implementation or API-backed translator must be added and configured with legitimate credentials if needed.
+
+## 15. Known limitations
+
+- Public Qwen baseline may produce imperfect satellite captions.
+- Original custom fine-tuned behavior cannot be reproduced without missing adapter and detector weights.
+- SAR/IR-specific adapters are not available in the current verified setup.
+- Translation service is not implemented locally.
+- The application currently handles the verified single-image workflow. Radar fusion and temporal change detection from the proposal deck would require additional upload flows, model integration, training artifacts, and validation.
+
+## 16. Security and secrets
+
+- Database credentials are stored only in `backend/.env`.
+- `.env` files are ignored by Git.
+- Model caches and virtual environments are ignored by Git.
+- Uploads and generated results are ignored by Git.
+- No fake credentials or placeholder secrets are hardcoded into the application.
+
+## 17. Suggested future improvements
+
+1. Add a complete translation microservice or remove the translation route from UI flows if not needed.
+2. Add authenticated session tokens instead of relying only on returned user records.
+3. Add upload size/type validation with clear user-facing messages.
+4. Add progress indicators for long-running inference.
+5. Add a model-status panel that reports warm/cold model state.
+6. Add optional GPU/CPU mode switching through documented environment variables.
+7. Add test fixtures for multiple satellite scenes.
+8. Add support for temporal change detection when matching datasets and weights are available.
+9. Add a structured evaluation dashboard for benchmark images and QA pairs.
+10. Package the local setup with a single launcher script after all services are finalized.
+
+## 18. Conclusion
+
+SatQuery AI is now configured as a runnable local multimodal satellite-analysis application on Windows. The verified setup uses PostgreSQL, Node/Express, React/Vite, FastAPI, Qwen2.5-VL, and YOLO11x-OBB. Core workflows are operational: user authentication, upload, chat creation, captioning, VQA, grounding, chat history, persistence, and report generation.
