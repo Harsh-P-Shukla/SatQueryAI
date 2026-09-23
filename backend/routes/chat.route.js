@@ -44,9 +44,18 @@ router.post("/new", async (req, res) => {
 
   const fileName = path.basename(imageUrl);
 
-  // Inform model server about the uploaded image so it can return merged geometry
-  const response = await axios.post(`${modelLink}/upload`,{image_id: fileName, image_url: imageUrl});
-
+const response = await axios.post(
+  `${modelLink}/upload`,
+  {
+    image_id: fileName,
+    image_url: imageUrl
+  },
+  {
+    headers: {
+      "ngrok-skip-browser-warning": "true"
+    }
+  }
+);
   // Persist chat row including the merged polygons/classes returned by the model
   const result = await pool.query(
     "INSERT INTO chats (user_id, image_url, title, img_type, merged_polys, merged_cls, merged_source) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *",
